@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Good & Evil Words</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 16px;
+        }
+        
+        .input-container {
+            margin-bottom: 20px;
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        
+        #wordInput {
+            padding: 12px;
+            font-size: 16px;
+            flex: 1;
+            min-width: 200px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        
+        #addButton {
+            padding: 12px 24px;
+            font-size: 16px;
+            cursor: pointer;
+            border: none;
+            background: #4A4A4A;
+            color: white;
+            border-radius: 4px;
+        }
+        #clearButton {
+            padding: 12px 24px;
+            font-size: 16px;
+            cursor: pointer;
+            background: #ffffff;
+            color: black;
+            border-radius: 4px;
+        }
+        
+        .axis-container {
+            position: relative;
+            min-height: 100px;
+            margin: 60px 20px 20px;
+            border-bottom: 2px solid #ccc;
+        }
+        
+        .word-box {
+            position: absolute;
+            padding: 8px 16px;
+            border-radius: 4px;
+            background: #f0f0f0;
+            transform: translateX(-50%);
+            bottom: 20px;
+            font-size: 14px;
+            white-space: nowrap;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        #evil-box {
+            left: 0;
+            top:5px;
+            background: #ff9999;
+        }
+        
+        #good-box {
+            right: 0;
+            top:5px;
+            transform: translateX(50%);
+            background: #99ff99;
+        }
+
+        @media (max-width: 480px) {
+            body {
+                padding: 12px;
+            }
+            
+            .input-container {
+                flex-direction: column;
+            }
+            
+            #wordInput {
+                width: 100%;
+                min-width: unset;
+            }
+            
+            #addButton {
+                width: 100%;
+            }
+            
+            .word-box {
+                padding: 6px 12px;
+                font-size: 13px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <h1>
+        Good & Evil Words
+    </h1>
+    <p>
+        Enter 2 or more words to see their relative distances to the concepts of "good" and "evil". This is based on language model embeddings which capture the semantics associated with the words in humanity's collective consciousness. 
+    </p>
+    <p>
+        Source code / about this project: <a href="https://github.com/DefenderOfBasic/good-and-evil-concepts">github.com/DefenderOfBasic/good-and-evil-concepts</a>
+    </p>
+    <div id="status"></div>
+    <div id="content-container" style="display: none;">
+        <div class="input-container">
+            <input type="text" id="wordInput" placeholder="Enter a word">
+            <button id="addButton">Add Word</button>
+            <button id="clearButton">Clear</button>
+        </div>
+        
+        <div class="axis-container" id="axis">
+            <div class="word-box" id="evil-box">Evil</div>
+            <div class="word-box" id="good-box">Good</div>
+        </div>
+    </div>
+    
+
+    <script type="module">
+        import { pipeline, env } from 'https://cdn.jsdelivr.net/npm/@xenova/transformers@2.6.0';
+        // Since we will download the model from the Hugging Face Hub, we can skip the local model check
+        env.allowLocalModels = false;
+        // Reference the elements that we will need
+        const status = document.getElementById('status');
+        // Create a new object detection pipeline
+        status.textContent = 'Loading model...';
+        const model_name = 'nomic-ai/nomic-embed-text-v1.5'
+        
+        const embedder = await pipeline('feature-extraction', model_name,
+        {
+            quantized: true,
+            progress_callback: data => {
+                const { progress, loaded, total } = data
+                if (progress) {
+                    const totalMB = Math.round(total / (1024 * 1024))
+                    const loadedMB = Math.round(loaded / (1024 * 1024))
+                    
+                    status.textContent = `${Math.round(progress)}% (${loadedMB}/${totalMB} mb)`;
+                }
+            }
+        });
+        const southPole = 'evil'
+        const northPole = 'good'
+        document.querySelector("#evil-box").innerHTML = southPole
+        document.querySelector("#good-box").innerHTML = northPole
+        status.textContent = 'Embedding poles';
+
+        const southVector = (await embedder(southPole, {pooling: 'mean', normalize: true})).data
+        const northVector = (await embedder(northPole, {pooling: 'mean', normalize: true})).data
+
+
+        status.textContent = 'Ready';
+        status.style.display = 'none'
+        document.querySelector("#content-container").style.display = 'block'
+
+        const wordInput = document.getElementById('wordInput');
+        const addButton = document.getElementById('addButton');
+        const axis = document.getElementById('axis');
+
+        let wordsComputed = []
+        
+        async function addWord() {
+            const word = wordInput.value.trim();
+            if (word) {
+                wordInput.value = '';
+                wordInput.focus();
+
+                const embeddingVector = (await embedder(word, {pooling: 'mean', normalize: true})).data
+                const southDistance = cosineSimilarity(embeddingVector, southVector)
+                const northDistance = cosineSimilarity(embeddingVector, northVector)
+                wordsComputed.push({ word, southDistance, northDistance })
+
+                // Add all words
+                clearAllWords()
+
+                console.log(JSON.stringify(wordsComputed, null, 2)) 
+
+                const positions = wordsComputed.map(d => d.northDistance / (d.southDistance + d.northDistance));
+                const minPos = Math.min(...positions);
+                const maxPos = Math.max(...positions);
+                console.log({ positions, minPos, maxPos })
+
+                for (let { word, southDistance, northDistance } of wordsComputed) {
+                    const rawPosition = (northDistance / (southDistance + northDistance))
+                    const normalizedPosition = ((rawPosition - minPos) / (maxPos - minPos) * 100);
+
+
+                    console.log(word, normalizedPosition)
+                    
+
+                    const wordElement = document.createElement('div');
+                    wordElement.className = 'word-box';
+                    wordElement.textContent = word;
+                    wordElement.style.left = `${normalizedPosition}%`;
+                    axis.appendChild(wordElement);
+                }
+                
+                
+                
+            }
+        }
+
+
+        function clearAllWords() {
+            axis.replaceChildren(document.getElementById('evil-box'), document.getElementById('good-box'));
+        }
+
+        document.querySelector("#clearButton").onclick = () => {
+            clearAllWords()
+            wordsComputed = []
+        }
+        
+        addButton.addEventListener('click', addWord);
+        wordInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                addWord();
+            }
+        });
+
+        /// Helpers
+
+        // Calculate dot product of two vectors
+        const dotProduct = (vecA, vecB) => {
+            if (vecA.length !== vecB.length) {
+                throw new Error('Vectors must have the same length');
+            }
+            return vecA.reduce((sum, a, i) => sum + a * vecB[i], 0);
+        };
+
+        // Calculate magnitude (length) of a vector
+        const magnitude = (vec) => {
+            return Math.sqrt(vec.reduce((sum, val) => sum + val * val, 0));
+        };
+
+        // Calculate cosine similarity between two vectors
+        const cosineSimilarity = (vecA, vecB) => {
+            if (vecA.length !== vecB.length) {
+                throw new Error('Vectors must have the same length');
+            }
+            
+            const dot = dotProduct(vecA, vecB);
+            const magA = magnitude(vecA);
+            const magB = magnitude(vecB);
+            
+            if (magA === 0 || magB === 0) {
+                throw new Error('Cannot calculate cosine similarity for zero vector');
+            }
+            
+            return dot / (magA * magB);
+        };
+    </script>
+
+
+</body>
+</html>
