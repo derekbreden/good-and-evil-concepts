@@ -1,4 +1,4 @@
-# Good & Evil Words
+# Polarized Words
 
 https://defenderofbasic.github.io/good-and-evil-concepts/
 
