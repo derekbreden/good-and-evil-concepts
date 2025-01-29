@@ -20,7 +20,10 @@ If we try polarizing words like "capitalism" and "communism", you'll get "commun
 
 But society is not a monolith. **The aggregate view doesn't let us discern** between (1) everyone feels this specific way or (2) different tribes vehemently disagree. If we were to ask people to rate these words, we might see a bimodal distribution where many put "capitalism" as very good and communism as very evil, and others the reverse. 
 
-We can validate our findings by surveying people, and by searching for corrborating evidence in the embedding relationships. 
+We can validate our findings by surveying people, and by searching for corrborating evidence in the embedding relationships. We can confirm that "capitalism" leans more right wing, and "communism" leans more left wing. And to sanity check, "Obama" and "trucks" fall in the positions we expect along this line:
+
+<img src="https://github.com/user-attachments/assets/6bbabde4-eab0-4f5e-8511-dbbaa8f64297" width=400></img>
+
 
 ### How the code works
 
