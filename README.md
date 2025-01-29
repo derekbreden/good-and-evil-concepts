@@ -60,12 +60,17 @@ From there you can do cosine similarity between two vectors to get the distance 
 
 This is what it would look like for example if you got the semantic vectors for all emojis and plotted them. You can see their relationships, and the "semantic gaps":
 
-<img src="https://github.com/user-attachments/assets/ca323507-62dd-4f51-b278-f19daf7491c1" width=400></img>
+<img src="https://github.com/user-attachments/assets/ca323507-62dd-4f51-b278-f19daf7491c1" width=500></img>
 
-This is the same exact process that Kat (`@poetengineer__`) did here to visualize the latent space of colors. In other words, this is how an LLM "sees" color. It makes sense that similar colors cluster together.
+This is the same exact process that [Kat (`@poetengineer__`) did here](https://x.com/poetengineer__/status/1779209350516449520) to visualize the latent space of colors. In other words, this is how an LLM "sees" color. It makes sense that similar colors cluster together.
 
 <img src="https://github.com/user-attachments/assets/c0813c87-3c0a-4689-8cfd-9141a8820162" width=400></img>
 
-The 🤯 part is how every single word or phrase fits _somewhere_ in this space. 
+The 🤯 part is how every single word or phrase fits _somewhere_ in this space. Every word has "some" color association, and it is NOT random. It's cultural. We can test this by making the poles 🔴 red and 🟢 green, then testing words like "fire", "grass", which go to red and green as expected. Then looking for things "in the middle". 
+
+Apple goes slightly closer to red (perhaps "red apples" are a bit more represented in the discourse). "gross" goes firmly to green. I tried "ewww" below to demonstrate that the words don't have to be real. **If they mean something to a human, the lanuage model captures it**. 
+
+<img src="https://github.com/user-attachments/assets/63c6bc78-f03e-413b-8fad-0fc5a42bf3ce" width=400></img>
+
 
 
