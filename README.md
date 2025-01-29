@@ -1,5 +1,7 @@
 # Good & Evil Words
 
+https://defenderofbasic.github.io/good-and-evil-concepts/
+
 100% browser based semantic embeddings demo. Computes the embedding of the input words and shows their relative distance to the pole words ("good" and "evil"). 
 
 Here is Obama, Trump, Hitler, Kittens. Hitler is "evil" as expected. Trump is more "evil" than Obama, but both of them are way better than Hitler. Kittens is not as "good" as Obama. 
