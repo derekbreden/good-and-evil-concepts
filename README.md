@@ -20,9 +20,10 @@ If we try polarizing words like "capitalism" and "communism", you'll get "commun
 
 But society is not a monolith. The aggregate view doesn't let us discern between (1) everyone feels this specific way or (2) different tribes vehemently disagree. If we were to ask people to rate these words, we might see a bimodal distribution where many put "capitalism" as very good and communism as very evil, and others the reverse. 
 
-
-
 ### How the code works
+
+Can get any model from here: https://huggingface.co/models?other=feature-extraction
+
 
 ```javascript
 import { pipeline, env } from 'https://cdn.jsdelivr.net/npm/@xenova/transformers@2.6.0';

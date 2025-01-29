@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Good & Evil Words (test)</title>
+    <title>Polarized Words</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -104,10 +104,10 @@
 </head>
 <body>
     <h1>
-        Good & Evil Words
+        Polarized Words
     </h1>
     <p>
-        Enter 2 or more words to see their relative distances to the concepts of "good" and "evil". This is based on language model embeddings which capture the semantics associated with the words in humanity's collective consciousness. 
+        Enter 2 or more words to see their <span style="text-decoration: underline; font-weight: 700;">relative</span> distances to the concepts of "good" and "evil". This is based on language model embeddings which capture the semantics associated with the words in humanity's collective consciousness. 
     </p>
     <p>
         Source code / about this project: <a href="https://github.com/DefenderOfBasic/good-and-evil-concepts">github.com/DefenderOfBasic/good-and-evil-concepts</a>
@@ -117,7 +117,7 @@
         <div class="input-container">
             <input type="text" id="wordInput" placeholder="Enter a word">
             <button id="addButton">Add Word</button>
-            <button id="clearButton">Clear</button>
+            <button id="clearButton">Clear all</button>
         </div>
         
         <div class="axis-container" id="axis">
@@ -125,17 +125,49 @@
             <div class="word-box" id="good-box">Good</div>
         </div>
     </div>
-    
+    <h2>⚙️ Settings</h2>
+    <label>North pole</label>
+    <input id="north-pole" value="good"></input>
+
+    <label>South pole</label>
+    <input id="south-pole" value="evil"></input>
+    <br/><br/>
+    <label>
+        Embedding model:
+    </label>
+    <input id="model" value="nomic-ai/nomic-embed-text-v1.5" style="width: 400px;"></input>
+    <p style="color:gray">
+        (from <a style="color: gray;" href="https://huggingface.co/models?other=feature-extraction">Hugging Face</a>, must support ONNX. Refresh page to reload model)
+    </p>
+    <button id="reset">
+        Reset settings
+    </button>
 
     <script type="module">
-        import { pipeline, env } from 'https://cdn.jsdelivr.net/npm/@xenova/transformers@2.6.0';
+        const modelInput = document.querySelector("#model")
+        const northPoleInput = document.querySelector("#north-pole")
+        const southPoleInput = document.querySelector("#south-pole")
+        modelInput.oninput = () => {
+            localStorage.setItem("model", modelInput.value)
+        }
+
+        import { pipeline, env } from 'https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.3.2';
         // Since we will download the model from the Hugging Face Hub, we can skip the local model check
         env.allowLocalModels = false;
         // Reference the elements that we will need
         const status = document.getElementById('status');
         // Create a new object detection pipeline
         status.textContent = 'Loading model...';
-        const model_name = 'nomic-ai/nomic-embed-text-v1.5'
+        if (localStorage.getItem('words') == null) {
+            localStorage.setItem('words', JSON.stringify([]))
+        }
+        if (localStorage.getItem('model')) {
+            modelInput.value = localStorage.getItem('model')
+        }
+        if (localStorage.getItem('north')) northPoleInput.value = localStorage.getItem('north')
+        if (localStorage.getItem('south')) southPoleInput.value = localStorage.getItem('south')
+
+        const model_name = modelInput.value
         
         const embedder = await pipeline('feature-extraction', model_name,
         {
@@ -150,15 +182,34 @@
                 }
             }
         });
-        const southPole = 'evil'
-        const northPole = 'good'
+        let southPole = southPoleInput.value
+        let northPole = northPoleInput.value
         document.querySelector("#evil-box").innerHTML = southPole
         document.querySelector("#good-box").innerHTML = northPole
         status.textContent = 'Embedding poles';
 
-        const southVector = (await embedder(southPole, {pooling: 'mean', normalize: true})).data
-        const northVector = (await embedder(northPole, {pooling: 'mean', normalize: true})).data
+        let southVector = (await embedder(southPole, {pooling: 'mean', normalize: true})).data
+        let northVector = (await embedder(northPole, {pooling: 'mean', normalize: true})).data
 
+        northPoleInput.onchange = () => {
+            updatePoles()
+        }
+        southPoleInput.onchange = () => {
+            updatePoles()
+        }
+        async function updatePoles() {
+            southPole = southPoleInput.value
+            northPole = northPoleInput.value
+            document.querySelector("#evil-box").innerHTML = southPole
+            document.querySelector("#good-box").innerHTML = northPole
+
+            localStorage.setItem("north", northPoleInput.value) 
+            localStorage.setItem("south", southPoleInput.value) 
+            southVector = (await embedder(southPole, {pooling: 'mean', normalize: true})).data
+            northVector = (await embedder(northPole, {pooling: 'mean', normalize: true})).data
+
+            reComputeAllWords()
+        }
 
         status.textContent = 'Ready';
         status.style.display = 'none'
@@ -169,9 +220,20 @@
         const axis = document.getElementById('axis');
 
         let wordsComputed = []
+
+        async function reComputeAllWords() {
+            clearAllWords()
+            const oldWords = wordsComputed.map(item => item.word)
+            wordsComputed = []
+            for (let oldWord of oldWords) {
+                await addWord(oldWord)
+            }
+        }
         
-        async function addWord() {
-            const word = wordInput.value.trim();
+        async function addWord(overrideWord = null) {
+            let word = wordInput.value.trim();
+            if (overrideWord) word = overrideWord
+
             if (word) {
                 wordInput.value = '';
                 wordInput.focus();
@@ -181,34 +243,33 @@
                 const northDistance = cosineSimilarity(embeddingVector, northVector)
                 wordsComputed.push({ word, southDistance, northDistance })
 
-                // Add all words
-                clearAllWords()
-
-                console.log(JSON.stringify(wordsComputed, null, 2)) 
-
-                const positions = wordsComputed.map(d => d.northDistance / (d.southDistance + d.northDistance));
-                const minPos = Math.min(...positions);
-                const maxPos = Math.max(...positions);
-                console.log({ positions, minPos, maxPos })
-
-                for (let { word, southDistance, northDistance } of wordsComputed) {
-                    const rawPosition = (northDistance / (southDistance + northDistance))
-                    const normalizedPosition = ((rawPosition - minPos) / (maxPos - minPos) * 100);
-
-
-                    console.log(word, normalizedPosition)
-                    
-
-                    const wordElement = document.createElement('div');
-                    wordElement.className = 'word-box';
-                    wordElement.textContent = word;
-                    wordElement.style.left = `${normalizedPosition}%`;
-                    axis.appendChild(wordElement);
-                }
-                
-                
-                
+                localStorage.setItem('words', 
+                    JSON.stringify(wordsComputed.map(item => item.word)) 
+                )
             }
+            // Add all words
+            clearAllWords()
+
+            const positions = wordsComputed.map(d => d.northDistance / (d.southDistance + d.northDistance));
+            const minPos = Math.min(...positions);
+            const maxPos = Math.max(...positions);
+
+            for (let { word, southDistance, northDistance } of wordsComputed) {
+                const rawPosition = (northDistance / (southDistance + northDistance))
+                const normalizedPosition = ((rawPosition - minPos) / (maxPos - minPos) * 100);                    
+
+                const wordElement = document.createElement('div');
+                wordElement.className = 'word-box';
+                wordElement.textContent = word;
+                wordElement.style.left = `${normalizedPosition}%`;
+                axis.appendChild(wordElement);
+                wordElement.onclick = (e) => {
+                    wordsComputed = wordsComputed.filter(item => item.word !== e.target.textContent);
+                    e.target.parentNode.removeChild(e.target);
+                    addWord()
+                }
+            }    
+            
         }
 
 
@@ -229,7 +290,15 @@
         });
 
         /// Helpers
+        document.querySelector("#reset").onclick = () => {
+            modelInput.value = "nomic-ai/nomic-embed-text-v1.5"
+            northPoleInput.value = "good"
+            southPoleInput.value = "evil"
 
+            modelInput.dispatchEvent(new Event('input', { bubbles: true }));
+            northPoleInput.dispatchEvent(new Event('change', { bubbles: true }));
+            southPoleInput.dispatchEvent(new Event('change', { bubbles: true }));
+        }
         // Calculate dot product of two vectors
         const dotProduct = (vecA, vecB) => {
             if (vecA.length !== vecB.length) {
@@ -259,6 +328,14 @@
             
             return dot / (magA * magB);
         };
+
+        // preload saved words
+        if (localStorage.getItem('words')) {
+            const array = JSON.parse(localStorage.getItem('words'))
+            for (let word of array) {
+                await addWord(word)
+            }
+        }
     </script>
 
 
