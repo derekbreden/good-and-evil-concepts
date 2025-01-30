@@ -44,36 +44,57 @@
             color: black;
             border-radius: 4px;
         }
-        
+
         .axis-container {
-            position: relative;
-            min-height: 100px;
-            margin: 60px 20px 20px;
-            border-bottom: 2px solid #ccc;
+            display: flex;
+            justify-content: space-between;
         }
         
-        .word-box {
+        .between-poles {
+            width: 100%;
+            position: relative;
+            margin: 50px 20px 50px 20px;
+        }
+
+        .absolute-indicator {
             position: absolute;
+            left: 0;
+            right: 100%;
+            margin-top: 10px;
+            border-left: 2px solid #9af;
+            border-right: 2px solid #9af;
+            border-bottom: 2px solid #9af;
+            height: 20px;
+        }
+
+        .added-words {
+            position: relative;
+            min-height: 40px;
+            border-left: 2px solid #9af;
+            border-right: 2px solid #9af;
+            border-bottom: 2px solid #9af;
+        }
+
+        .word-box {
             padding: 8px 16px;
             border-radius: 4px;
-            background: #f0f0f0;
-            transform: translateX(-50%);
-            bottom: 20px;
             font-size: 14px;
             white-space: nowrap;
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
         
+        .added-words .word-box {
+            position: absolute;
+            background: #f0f0f0;
+            transform: translateX(-50%);
+            bottom: 20px;
+        }
+        
         #evil-box {
-            left: 0;
-            top:5px;
             background: #ff9999;
         }
         
         #good-box {
-            right: 0;
-            top:5px;
-            transform: translateX(50%);
             background: #99ff99;
         }
 
@@ -122,6 +143,10 @@
         
         <div class="axis-container" id="axis">
             <div class="word-box" id="evil-box">Evil</div>
+            <div class="between-poles">
+                <div class="added-words" id="added-words"></div>
+                <div class="absolute-indicator"></div>
+            </div>
             <div class="word-box" id="good-box">Good</div>
         </div>
     </div>
@@ -217,7 +242,7 @@
 
         const wordInput = document.getElementById('wordInput');
         const addButton = document.getElementById('addButton');
-        const axis = document.getElementById('axis');
+        const addedWords = document.getElementById('added-words');
 
         let wordsComputed = []
 
@@ -228,6 +253,12 @@
             for (let oldWord of oldWords) {
                 await addWord(oldWord)
             }
+        }
+
+        function rememberWords() {
+            localStorage.setItem('words', 
+                JSON.stringify(wordsComputed.map(item => item.word)) 
+            )
         }
         
         async function addWord(overrideWord = null) {
@@ -242,10 +273,7 @@
                 const southDistance = cosineSimilarity(embeddingVector, southVector)
                 const northDistance = cosineSimilarity(embeddingVector, northVector)
                 wordsComputed.push({ word, southDistance, northDistance })
-
-                localStorage.setItem('words', 
-                    JSON.stringify(wordsComputed.map(item => item.word)) 
-                )
+                rememberWords()
             }
             // Add all words
             clearAllWords()
@@ -262,27 +290,48 @@
                 wordElement.className = 'word-box';
                 wordElement.textContent = word;
                 wordElement.style.left = `${normalizedPosition}%`;
-                axis.appendChild(wordElement);
+                addedWords.appendChild(wordElement);
                 wordElement.onclick = (e) => {
                     wordsComputed = wordsComputed.filter(item => item.word !== e.target.textContent);
+                    rememberWords()
                     e.target.parentNode.removeChild(e.target);
                     addWord()
                 }
-            }    
-            
+            }
+
+            // Call anything else that changes on each word added
+            drawAbsoluteIndicator(minPos, maxPos)
+        }
+
+        function drawAbsoluteIndicator(minPos, maxPos) {
+
+            // Not proud of this - I really don't understand what's going on
+            const absoluteDistance = cosineSimilarity(southVector, northVector)
+            const absolutePosition = absoluteDistance / (1 + absoluteDistance)
+            const minAbsolute = (minPos - absolutePosition) / (1 - 2 * absolutePosition)
+            const maxAbsolute = (maxPos - absolutePosition) / (1 - 2 * absolutePosition)
+            const leftPercent = (minAbsolute * 100) + "%"
+            const rightPercent = ((1 - maxAbsolute) * 100) + "%"
+
+            document.querySelector(".absolute-indicator").style.left = leftPercent
+            document.querySelector(".absolute-indicator").style.right = rightPercent
         }
 
 
         function clearAllWords() {
-            axis.replaceChildren(document.getElementById('evil-box'), document.getElementById('good-box'));
+            addedWords.replaceChildren();
         }
 
         document.querySelector("#clearButton").onclick = () => {
             clearAllWords()
             wordsComputed = []
+            rememberWords()
+            drawAbsoluteIndicator(0, 0)
         }
         
-        addButton.addEventListener('click', addWord);
+        addButton.addEventListener('click', (e) => {
+            addWord();
+        });
         wordInput.addEventListener('keypress', (e) => {
             if (e.key === 'Enter') {
                 addWord();
