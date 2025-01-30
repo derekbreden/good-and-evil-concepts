@@ -282,7 +282,9 @@
             wordsComputed = []
         }
         
-        addButton.addEventListener('click', addWord);
+        addButton.addEventListener('click', () => {
+            addWord()
+        });
         wordInput.addEventListener('keypress', (e) => {
             if (e.key === 'Enter') {
                 addWord();
